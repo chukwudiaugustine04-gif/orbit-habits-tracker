@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply antialiased;
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    background-color: var(--bg-base, #0a0e1a);
+    color: var(--text-primary, #ffffff);
+  }
+
+  input {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+  }
+
+  input::placeholder {
+    color: var(--text-muted, rgba(255, 255, 255, 0.25));
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border-subtle, rgba(255, 255, 255, 0.1));
+    border-radius: 3px;
+  }
+}
+
+/* Floating orbit animation */
+@keyframes orbit-float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(2deg);
+  }
+}
+
+.animate-orbit-float {
+  animation: orbit-float 6s ease-in-out infinite;
+}
+
+/* Slow rotation for orbit rings */
+@keyframes slow-rotate {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
