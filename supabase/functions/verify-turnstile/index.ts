@@ -5,7 +5,7 @@ const corsHeaders = {
 };
 
 const TURNSTILE_SECRET_KEY =
-  process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY ||
+  Deno.env.get("CLOUDFLARE_TURNSTILE_SECRET_KEY") ||
   "1x0000000000000000000000000000000AA";
 
 Deno.serve(async (req: Request) => {
@@ -41,6 +41,8 @@ Deno.serve(async (req: Request) => {
     );
 
     if (!cfResponse.ok) {
+      const errText = await cfResponse.text();
+      console.error("[verify-turnstile] Cloudflare request failed:", cfResponse.status, errText);
       return new Response(
         JSON.stringify({ success: false, error: "Cloudflare verification request failed" }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -48,6 +50,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const cfData = await cfResponse.json();
+    console.log("[verify-turnstile] Cloudflare response:", JSON.stringify(cfData));
 
     if (cfData.success === true) {
       return new Response(
@@ -56,6 +59,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    console.error("[verify-turnstile] Verification failed. Error codes:", cfData["error-codes"]);
     return new Response(
       JSON.stringify({
         success: false,
@@ -65,6 +69,7 @@ Deno.serve(async (req: Request) => {
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
+    console.error("[verify-turnstile] Internal error:", err);
     return new Response(
       JSON.stringify({ success: false, error: err.message || "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
