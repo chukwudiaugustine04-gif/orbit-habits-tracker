@@ -8,6 +8,20 @@
     font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
     background-color: var(--bg-base, #0a0e1a);
     color: var(--text-primary, #ffffff);
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
+  }
+
+  input,
+  textarea {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    user-select: text;
+  }
+
+  button {
+    cursor: pointer;
   }
 
   input {

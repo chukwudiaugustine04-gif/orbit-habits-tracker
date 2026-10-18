@@ -10,11 +10,6 @@ interface TurnstileVerificationProps {
   onReset: () => void;
 }
 
-interface BoundaryState {
-  hasError: boolean;
-  retryKey: number;
-}
-
 class TurnstileErrorBoundary extends Component<
   { children: ReactNode; onReset: () => void; retryKey: number },
   { hasError: boolean }
@@ -108,16 +103,18 @@ export default function TurnstileVerification({ onVerified, onReset }: Turnstile
   };
 
   return (
-    <div className="flex flex-col items-center gap-2 overflow-hidden rounded-xl">
+    <div className="flex w-full flex-col items-center gap-2 overflow-hidden rounded-xl">
       <TurnstileErrorBoundary onReset={onReset} retryKey={retryKey}>
-        <Turnstile
-          key={retryKey}
-          siteKey={TURNSTILE_SITE_KEY}
-          onSuccess={handleSuccess}
-          onExpire={handleReset}
-          onError={() => { handleReset(); setError('Security verification error. Please try again.'); }}
-          options={{ theme: 'dark', size: 'compact' }}
-        />
+        <div className="w-full">
+          <Turnstile
+            key={retryKey}
+            siteKey={TURNSTILE_SITE_KEY}
+            onSuccess={handleSuccess}
+            onExpire={handleReset}
+            onError={() => { handleReset(); setError('Security verification error. Please try again.'); }}
+            options={{ theme: 'dark', appearance: 'always', execution: 'render' }}
+          />
+        </div>
       </TurnstileErrorBoundary>
 
       {verifying && (

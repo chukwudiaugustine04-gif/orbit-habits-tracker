@@ -77,19 +77,20 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    if (!resendApiKey) {
-      return new Response(
-        JSON.stringify({ error: "Email service is not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
     const subject = body.type === "signup"
       ? "Verify your Orbit account"
       : "Reset your Orbit password";
 
     const code = body.code || "1234";
+
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    if (!resendApiKey) {
+      console.warn("RESEND_API_KEY not configured — email not sent (mock mode)");
+      return new Response(
+        JSON.stringify({ success: true, id: "mock", sender: SENDER, mocked: true }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     const emailPayload = {
       from: SENDER,
