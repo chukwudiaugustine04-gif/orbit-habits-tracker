@@ -11,7 +11,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import OrbitLogo from './OrbitLogo';
-import CaptchaWidget from './CaptchaWidget';
+import TurnstileVerification from './TurnstileVerification';
 
 interface OnboardingScreenProps {
   onComplete: (name: string) => void;
@@ -150,9 +150,9 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
           </div>
         </div>
 
-        {/* CAPTCHA */}
+        {/* Cloudflare Turnstile verification */}
         <div className="mb-6">
-          <CaptchaWidget
+          <TurnstileVerification
             onVerified={() => setCaptchaVerified(true)}
             onReset={() => setCaptchaVerified(false)}
           />

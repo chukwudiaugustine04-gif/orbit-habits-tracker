@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Turnstile } from '@marsidev/react-turnstile';
+import TurnstileVerification from './TurnstileVerification';
 import {
   Mail,
   Lock,
@@ -16,8 +16,6 @@ import {
 import OrbitLogo from './OrbitLogo';
 import OtpModal from './OtpModal';
 import { supabase } from '@/lib/supabase';
-
-const TURNSTILE_SITE_KEY = import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA';
 
 type AuthMode = 'login' | 'register';
 type ForgotStep = 'closed' | 'identify' | 'otp' | 'reset';
@@ -69,8 +67,6 @@ export default function AuthScreen({ userName, onBack, onAuthenticated }: AuthSc
   // Cloudflare Turnstile verification token — gates form submission
   // Only set after the server-side endpoint confirms the token is valid.
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [turnstileVerifying, setTurnstileVerifying] = useState(false);
-  const [turnstileError, setTurnstileError] = useState('');
 
   const firstName = userName.split(' ')[0] || 'there';
 
@@ -113,41 +109,6 @@ export default function AuthScreen({ userName, onBack, onAuthenticated }: AuthSc
   };
 
   const passwordsMatch = mode === 'login' || (password === confirmPassword && password.length >= 6);
-
-  const verifyTurnstileToken = async (token: string): Promise<boolean> => {
-    try {
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verify-turnstile`;
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({ token }),
-      });
-      if (!response.ok) {
-        return false;
-      }
-      const data = await response.json();
-      return data?.success === true;
-    } catch {
-      return false;
-    }
-  };
-
-  const handleTurnstileSuccess = async (token: string) => {
-    setTurnstileVerifying(true);
-    setTurnstileError('');
-    setTurnstileToken(null);
-
-    const ok = await verifyTurnstileToken(token);
-    if (ok) {
-      setTurnstileToken(token);
-    } else {
-      setTurnstileError('Security verification failed. Please try again.');
-    }
-    setTurnstileVerifying(false);
-  };
 
   const handleEmailSubmit = async () => {
     setError('');
@@ -418,7 +379,7 @@ export default function AuthScreen({ userName, onBack, onAuthenticated }: AuthSc
         {/* Tabs */}
         <div className="mb-6 flex rounded-xl border border-white/10 bg-white/5 p-1">
           <button
-            onClick={() => { setMode('login'); setError(''); setTurnstileToken(null); setTurnstileError(''); }}
+            onClick={() => { setMode('login'); setError(''); setTurnstileToken(null); }}
             className={`relative flex-1 rounded-lg py-2.5 text-sm font-medium transition-all ${
               mode === 'login' ? 'text-white' : 'text-white/40 hover:text-white/60'
             }`}
@@ -433,7 +394,7 @@ export default function AuthScreen({ userName, onBack, onAuthenticated }: AuthSc
             <span className="relative z-10">Log In</span>
           </button>
           <button
-            onClick={() => { setMode('register'); setError(''); setTurnstileToken(null); setTurnstileError(''); }}
+            onClick={() => { setMode('register'); setError(''); setTurnstileToken(null); }}
             className={`relative flex-1 rounded-lg py-2.5 text-sm font-medium transition-all ${
               mode === 'register' ? 'text-white' : 'text-white/40 hover:text-white/60'
             }`}
@@ -598,29 +559,11 @@ export default function AuthScreen({ userName, onBack, onAuthenticated }: AuthSc
           )}
 
           {/* Cloudflare Turnstile verification */}
-          <div className="mb-6 flex flex-col items-center gap-2 overflow-hidden rounded-xl">
-            <Turnstile
-              siteKey={TURNSTILE_SITE_KEY}
-              onSuccess={(token) => handleTurnstileSuccess(token)}
-              onExpire={() => { setTurnstileToken(null); setTurnstileError(''); }}
-              onError={() => { setTurnstileToken(null); setTurnstileError('Security verification error. Please try again.'); }}
-              options={{ theme: 'dark', size: 'compact' }}
+          <div className="mb-6">
+            <TurnstileVerification
+              onVerified={setTurnstileToken}
+              onReset={() => setTurnstileToken(null)}
             />
-            {turnstileVerifying && (
-              <div className="flex items-center gap-2 text-xs text-white/50">
-                <div className="h-3 w-3 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                Verifying...
-              </div>
-            )}
-            {!turnstileVerifying && turnstileToken && (
-              <div className="flex items-center gap-1.5 text-xs text-emerald-400">
-                <CheckCircle2 size={12} />
-                Verified
-              </div>
-            )}
-            {turnstileError && (
-              <p className="text-xs text-red-400">{turnstileError}</p>
-            )}
           </div>
 
           <button
