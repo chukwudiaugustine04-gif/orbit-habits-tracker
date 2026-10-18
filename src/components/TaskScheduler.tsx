@@ -15,6 +15,12 @@ import {
 import { supabase } from '@/lib/supabase';
 import { useAlarms } from '@/lib/useAlarms';
 import { loadStreakData } from '@/lib/streaks';
+import {
+  loadHabitsWithTodayCompletion,
+  logHabitCompletion,
+  clearHabitCompletionToday,
+  todayLocalDate,
+} from '@/lib/habitDaily';
 import type { Habit, HabitCategory } from '@/lib/types';
 import { HABIT_CATEGORIES } from '@/lib/types';
 import TaskCreationModal from './TaskCreationModal';
@@ -61,7 +67,7 @@ export default function TaskScheduler({ userId: _userId }: TaskSchedulerProps) {
   const [loading, setLoading] = useState(true);
   const [, forceUpdate] = useState(0);
   const [timeUntilReset, setTimeUntilReset] = useState('');
-  const lastResetDate = useRef(new Date().toISOString().split('T')[0]);
+  const lastResetDate = useRef(todayLocalDate());
   const [activeCategory, setActiveCategory] = useState<HabitCategory | 'All'>('All');
 
   // Tick every 30s so time-based UI (active/past states) stays fresh
@@ -98,18 +104,13 @@ export default function TaskScheduler({ userId: _userId }: TaskSchedulerProps) {
     completed: h.completed,
   })));
 
+  // Today's completion state is derived from completion_logs (one row per
+  // habit per calendar day), not from a boolean on the habit row. This means
+  // habits naturally show as incomplete at the start of a new day without any
+  // destructive reset — yesterday's logs remain in the database for history.
   const loadHabits = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('habits')
-      .select('*')
-      .order('position', { ascending: true });
-
-    if (error) {
-      console.error('Failed to load habits:', error.message);
-      return;
-    }
-
-    setHabits((data as Habit[]) || []);
+    const habitsWithToday = await loadHabitsWithTodayCompletion();
+    setHabits(habitsWithToday);
     setLoading(false);
   }, []);
 
@@ -125,19 +126,18 @@ export default function TaskScheduler({ userId: _userId }: TaskSchedulerProps) {
     loadStreak();
   }, [loadHabits, loadStreak]);
 
-  // Daily reset at midnight — checks every minute and resets when date changes
+  // Daily reset at midnight — since completion state is derived from
+  // completion_logs keyed by calendar date, a new day naturally shows all
+  // habits as incomplete. We just reload from the logs so the UI flips over
+  // at local midnight without destroying any historical data.
   const performDailyReset = useCallback(async () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayLocalDate();
     if (today === lastResetDate.current) return;
     lastResetDate.current = today;
 
-    // Reset all habits to uncompleted for the new day
-    await supabase.from('habits').update({ completed: false, completed_at: null }).neq('id', 'never-matches');
-
-    setHabits((prev) => prev.map((h) => ({ ...h, completed: false, completed_at: null })));
-    setStreak(0);
+    await loadHabits();
     await loadStreak();
-  }, [loadStreak]);
+  }, [loadHabits, loadStreak]);
 
   useEffect(() => {
     const interval = setInterval(performDailyReset, 60000);
@@ -174,48 +174,32 @@ export default function TaskScheduler({ userId: _userId }: TaskSchedulerProps) {
     if (!isUnlocked && !habit.completed) return;
 
     const newCompleted = !habit.completed;
-    const completedAt = newCompleted ? new Date().toISOString() : null;
 
-    // Optimistic update
+    // Optimistic update — today's completion state lives in the UI only;
+    // the source of truth is a completion_log row for today.
     setHabits((prev) =>
       prev.map((h) =>
-        h.id === habit.id ? { ...h, completed: newCompleted, completed_at: completedAt } : h
+        h.id === habit.id
+          ? { ...h, completed: newCompleted, completed_at: newCompleted ? new Date().toISOString() : null }
+          : h
       )
     );
 
-    // Persist to Supabase — revert optimistic update on failure
-    const { error: updateError } = await supabase
-      .from('habits')
-      .update({ completed: newCompleted, completed_at: completedAt })
-      .eq('id', habit.id);
-
-    if (updateError) {
-      console.error('Failed to update habit completion:', updateError.message);
-      alert("Supabase Error: " + updateError.message);
+    try {
+      if (newCompleted) {
+        await logHabitCompletion(habit);
+      } else {
+        await clearHabitCompletionToday(habit.id);
+      }
+    } catch (err) {
+      console.error('Failed to toggle habit completion:', (err as Error).message);
+      // Revert optimistic update on failure
       setHabits((prev) =>
         prev.map((h) =>
           h.id === habit.id ? { ...h, completed: habit.completed, completed_at: habit.completed_at } : h
         )
       );
       return;
-    }
-
-    // Log completion to completion_logs for analytics
-    if (newCompleted) {
-      await supabase.from('completion_logs').insert({
-        habit_id: habit.id,
-        habit_title: habit.title,
-        completed_date: new Date().toISOString().split('T')[0],
-        completed_at: completedAt,
-        day_of_week: new Date().getDay(),
-      });
-    } else {
-      const today = new Date().toISOString().split('T')[0];
-      await supabase
-        .from('completion_logs')
-        .delete()
-        .eq('habit_id', habit.id)
-        .eq('completed_date', today);
     }
 
     // Streak is derived from completion_logs, so just recompute it now.
