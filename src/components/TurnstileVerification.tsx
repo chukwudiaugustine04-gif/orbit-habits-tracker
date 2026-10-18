@@ -5,7 +5,7 @@ import { CheckCircle2, RefreshCw, ShieldAlert } from 'lucide-react';
 const TURNSTILE_SITE_KEY =
   import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA';
 
-const DEV_MODE = import.meta.env.DEV || import.meta.env.VITE_DEV_MODE === 'true';
+const DEV_MODE = import.meta.env.DEV;
 
 interface TurnstileVerificationProps {
   onVerified: (token: string) => void;

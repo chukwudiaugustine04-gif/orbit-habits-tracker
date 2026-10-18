@@ -24,9 +24,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => null);
     const token = body?.token;
 
-    const isDev =
-      Deno.env.get("DEV_MODE") === "true" ||
-      Deno.env.get("VITE_DEV_MODE") === "true";
+    const isDev = Deno.env.get("NODE_ENV") === "development";
 
     if (isDev || !token || typeof token !== "string") {
       console.log("[verify-turnstile] Dev/preview override — auto-verifying (token present:", !!token, ")");
