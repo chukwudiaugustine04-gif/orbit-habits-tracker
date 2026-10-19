@@ -15,6 +15,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import { useAlarms } from '@/lib/useAlarms';
 import { loadStreakData } from '@/lib/streaks';
+import AlarmOverlay from './AlarmOverlay';
 import {
   loadHabitsWithTodayCompletion,
   logHabitCompletion,
@@ -95,14 +96,16 @@ export default function TaskScheduler({ userId: _userId }: TaskSchedulerProps) {
     return () => clearInterval(interval);
   }, []);
 
-  // Alarm hook
-  useAlarms(habits.map((h) => ({
-    id: h.id,
-    title: h.title,
-    start_time: h.start_time,
-    end_time: h.end_time,
-    completed: h.completed,
-  })));
+  // Alarm hook — drives the looping loud sound + full-screen overlay.
+  const { activeAlarm, dismissAlarm, snoozeAlarm } = useAlarms(
+    habits.map((h) => ({
+      id: h.id,
+      title: h.title,
+      start_time: h.start_time,
+      end_time: h.end_time,
+      completed: h.completed,
+    }))
+  );
 
   // Today's completion state is derived from completion_logs (one row per
   // habit per calendar day), not from a boolean on the habit row. This means
@@ -527,6 +530,16 @@ export default function TaskScheduler({ userId: _userId }: TaskSchedulerProps) {
         onAdd={addHabit}
         nextPosition={habits.length}
       />
+
+      <AnimatePresence>
+        {activeAlarm && (
+          <AlarmOverlay
+            alarm={activeAlarm}
+            onDismiss={dismissAlarm}
+            onSnooze={snoozeAlarm}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

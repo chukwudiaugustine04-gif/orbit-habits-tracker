@@ -30,6 +30,7 @@ import { avatars, badges, tierColors } from '@/lib/cosmetics';
 import { supabase } from '@/lib/supabase';
 import { computeStreakFromLogs } from '@/lib/streaks';
 import type { Habit } from '@/lib/types';
+import AlarmSettings from './AlarmSettings';
 
 interface ThemeSettingsProps {
   userName: string;
@@ -359,6 +360,9 @@ export default function ThemeSettings({ userName }: ThemeSettingsProps) {
           )}
         </div>
       </motion.section>
+
+      {/* Alarm Sounds */}
+      <AlarmSettings />
 
       {/* Avatar Selector */}
       <motion.section
