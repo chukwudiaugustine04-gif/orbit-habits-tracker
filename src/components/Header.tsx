@@ -15,6 +15,7 @@ interface HeaderProps {
 
 const navTabs: { id: InterfaceTab; label: string }[] = [
   { id: 'scheduler', label: 'Scheduler' },
+  { id: 'health', label: 'Health' },
   { id: 'integrations', label: 'Integrations' },
   { id: 'analytics', label: 'Analytics' },
   { id: 'themes', label: 'Themes' },

@@ -5,6 +5,7 @@ import TaskScheduler from './TaskScheduler';
 import IntegrationsHub from './IntegrationsHub';
 import PerformanceDashboard from './PerformanceDashboard';
 import ThemeSettings from './ThemeSettings';
+import HealthHub from './HealthHub';
 import type { InterfaceTab } from '@/lib/types';
 
 interface DashboardProps {
@@ -40,6 +41,17 @@ export default function Dashboard({ userName, userId, onSignOut }: DashboardProp
             transition={{ duration: 0.25 }}
           >
             <TaskScheduler userId={userId} userName={userName} />
+          </motion.div>
+        )}
+        {activeTab === 'health' && (
+          <motion.div
+            key="health"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.25 }}
+          >
+            <HealthHub userName={userName} />
           </motion.div>
         )}
         {activeTab === 'integrations' && (

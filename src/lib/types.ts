@@ -23,4 +23,4 @@ export interface Streak {
   current_streak: number;
 }
 
-export type InterfaceTab = 'scheduler' | 'integrations' | 'analytics' | 'themes';
+export type InterfaceTab = 'scheduler' | 'integrations' | 'analytics' | 'themes' | 'health';
