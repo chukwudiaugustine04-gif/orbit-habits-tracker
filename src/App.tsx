@@ -7,6 +7,8 @@ import { supabase } from '@/lib/supabase';
 import { applyTheme, type ThemeId } from '@/lib/themes';
 import type { Session } from '@supabase/supabase-js';
 import { InstallPrompt } from "./components/InstallPrompt";
+import { useEffect } from "react";
+import { initAlarmNotificationSystem } from "./lib/alarmSettings";
 
 type Screen = 'onboarding' | 'auth' | 'dashboard';
 
@@ -45,6 +47,9 @@ export default function App() {
   const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
+    // Initialize the alarm notification system & request permission
+  initAlarmNotificationSystem();
+    
     // Apply saved theme
     const savedTheme = localStorage.getItem('orbit-theme') as ThemeId | null;
     applyTheme(savedTheme || 'dark-space');
