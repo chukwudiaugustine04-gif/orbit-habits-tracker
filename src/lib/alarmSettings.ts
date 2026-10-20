@@ -1,21 +1,10 @@
 import type { PresetId } from './alarmSounds';
 
-/**
- * User alarm preferences, persisted in localStorage. The selected sound is
- * either one of the built-in presets or a custom uploaded sound (referenced
- * by its IndexedDB id). gainBoost multiplies the Web Audio master gain so
- * alarms can be pushed beyond default HTML5 audio loudness.
- */
-
 export interface AlarmSettings {
-  /** 'preset' to use a built-in alarm, 'custom' to use an uploaded sound. */
   source: 'preset' | 'custom';
   presetId: PresetId;
-  /** IndexedDB id of the uploaded sound when source === 'custom'. */
   customSoundId: string | null;
-  /** Master gain multiplier (1.0 = no boost, up to 5.0). */
   gainBoost: number;
-  /** Snooze duration in minutes when the user taps Snooze on the overlay. */
   snoozeMinutes: number;
 }
 
@@ -45,24 +34,36 @@ export function saveAlarmSettings(settings: AlarmSettings): void {
   if (typeof localStorage === 'undefined') return;
   localStorage.setItem(KEY, JSON.stringify(settings));
 }
+
+// Notification System Helpers
+export async function initAlarmNotificationSystem() {
+  if (!('serviceWorker' in navigator) || !('Notification' in window)) return false;
+  try {
+    const registration = await navigator.serviceWorker.register('/sw.js');
+    const permission = await Notification.requestPermission();
+    return permission === 'granted';
+  } catch (error) {
+    console.error('Service Worker registration failed:', error);
+    return false;
+  }
+}
+
 export async function showHabitAlarmNotification(habitTitle: string) {
   if (!('serviceWorker' in navigator)) return;
-  
   try {
     const registration = await navigator.serviceWorker.ready;
-
     registration.showNotification(Habit Time Up: ${habitTitle}, {
-      body: Time to complete your habit! Click below to control the alarm.,
+      body: 'Time to complete your habit! Click below to control the alarm.',
       icon: '/pwa-192x192.svg',
       tag: 'habit-alarm-notification',
       requireInteraction: true,
       vibrate: [500, 250, 500, 250, 500],
       actions: [
         { action: 'stop-alarm', title: 'Stop Alarm' },
-        { action: 'snooze', title: 'Snooze 5 min' }
-      ]
+        { action: 'snooze', title: 'Snooze 5 min' },
+      ],
     });
   } catch (err) {
-    console.error('Failed to trigger notification:', err);
+    console.error('Notification error:', err);
   }
 }
