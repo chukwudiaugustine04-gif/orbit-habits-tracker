@@ -4,6 +4,7 @@ import { Bell, Hand, Square } from 'lucide-react';
 import type { ActiveAlarm } from '@/lib/useAlarms';
 import { loadAlarmSettings } from '@/lib/alarmSettings';
 import { showHabitAlarmNotification } from '../lib/alarmSettings';
+import { getCustomAudio } from '@/lib/audioStorage';
 
 interface AlarmOverlayProps {
   alarm: ActiveAlarm;
@@ -52,25 +53,44 @@ export default function AlarmOverlay({ alarm, onDismiss, onSnooze }: AlarmOverla
       navigator.serviceWorker.removeEventListener('message', handleMessage);
     };
   }, [onDismiss, onSnooze]);  
+  // Play custom audio from IndexedDB (or fallback default)
   useEffect(() => {
-    if (alarm?.habitTitle) {
-      showHabitAlarmNotification(alarm.habitTitle);
+    let audioUrl: string | null = null;
+    let audioElement: HTMLAudioElement | null = null;
+
+    async function playAudio() {
+      const customAudioId = localStorage.getItem('orbit-custom-alarm-sound');
+      
+      if (customAudioId) {
+        const audioBlob = await getCustomAudio(customAudioId);
+        if (audioBlob) {
+          audioUrl = URL.createObjectURL(audioBlob);
+          audioElement = new Audio(audioUrl);
+          audioElement.loop = true;
+          audioElement.play().catch(console.error);
+          return;
+        }
+      }
+
+      // Default fallback sound if no custom sound is set
+      audioElement = new Audio('/alarm-default.mp3');
+      audioElement.loop = true;
+      audioElement.play().catch(console.error);
     }
-  }, [alarm?.habitTitle]);
 
-  // Listen for actions clicked in the Notification Shade (Stop / Snooze)
-  useEffect(() => {
-    if (!('serviceWorker' in navigator)) return;
+    playAudio();
 
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'STOP_ALARM') {
-        onDismiss();
-      } else if (event.data?.type === 'SNOOZE_ALARM') {
-        onSnooze();
+    return () => {
+      if (audioElement) {
+        audioElement.pause();
+        audioElement.currentTime = 0;
+      }
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
       }
     };
-
-    navigator.serviceWorker.addEventListener('message', handleMessage);
+  }, []);
+     navigator.serviceWorker.addEventListener('message', handleMessage);
     return () => {
       navigator.serviceWorker.removeEventListener('message', handleMessage);
     };
