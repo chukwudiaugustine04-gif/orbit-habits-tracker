@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
+import CustomAudioUploader from './CustomAudioUploader';
 import {
+  
   Bell,
   Upload,
   Trash2,
@@ -178,6 +180,14 @@ export default function AlarmSettings() {
         <p className="mb-5 text-sm" style={{ color: 'var(--text-secondary)' }}>
           Choose a loud preset alarm, upload your own ringtone, and boost the volume beyond normal limits. Alarms ring until you dismiss them.
         </p>
+        {/* Custom Audio Uploader Section */}
+        <div className="mb-6">
+          <CustomAudioUploader 
+            onAudioSaved={(audioId) => {
+              localStorage.setItem('orbit-custom-alarm-sound', audioId);
+            }} 
+          />
+        </div>
 
         {/* Preset grid */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
