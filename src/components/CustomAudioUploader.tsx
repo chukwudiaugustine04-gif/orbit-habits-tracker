@@ -16,7 +16,7 @@ export default function CustomAudioUploader({ onAudioSaved }: CustomAudioUploade
 
     try {
       setUploading(true);
-      const audioId = custom-alarm-${Date.now()};
+      const audioId = `custom-alarm-${Date.now()}`;
       
       // Save raw audio blob to IndexedDB
       await saveCustomAudio(audioId, file);

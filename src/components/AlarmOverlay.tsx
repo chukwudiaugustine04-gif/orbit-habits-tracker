@@ -90,11 +90,6 @@ export default function AlarmOverlay({ alarm, onDismiss, onSnooze }: AlarmOverla
       }
     };
   }, []);
-     navigator.serviceWorker.addEventListener('message', handleMessage);
-    return () => {
-      navigator.serviceWorker.removeEventListener('message', handleMessage);
-    };
-  }, [onDismiss, onSnooze]);
   const timeStr = new Date(alarm.triggeredAt).toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',

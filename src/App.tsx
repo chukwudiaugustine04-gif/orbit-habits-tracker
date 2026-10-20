@@ -3,12 +3,14 @@ import { AnimatePresence } from 'framer-motion';
 import OnboardingScreen from '@/components/OnboardingScreen';
 import AuthScreen from '@/components/AuthScreen';
 import Dashboard from '@/components/Dashboard';
+import SessionLockScreen from '@/components/SessionLockScreen';
 import { supabase } from '@/lib/supabase';
 import { applyTheme, type ThemeId } from '@/lib/themes';
 import type { Session } from '@supabase/supabase-js';
 import { InstallPrompt } from "./components/InstallPrompt";
-import { useEffect } from "react";
 import { initAlarmNotificationSystem } from "./lib/alarmSettings";
+
+const LOCK_KEY = 'orbit-session-locked';
 
 type Screen = 'onboarding' | 'auth' | 'dashboard';
 
@@ -45,6 +47,30 @@ export default function App() {
   const [userName, setUserName] = useState('');
   const [session, setSession] = useState<Session | null>(null);
   const [authReady, setAuthReady] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
+
+  // Session lock: flag the session as locked whenever the tab is hidden,
+  // and show the lock screen when the user returns. Only applies once the
+  // user is already signed in — the onboarding/auth flow is unaffected.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        if (session) sessionStorage.setItem(LOCK_KEY, '1');
+      } else if (document.visibilityState === 'visible') {
+        if (sessionStorage.getItem(LOCK_KEY) === '1' && session) {
+          sessionStorage.removeItem(LOCK_KEY);
+          setIsLocked(true);
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [session]);
+
+  const handleUnlocked = () => {
+    setIsLocked(false);
+  };
 
   useEffect(() => {
     // Initialize the alarm notification system & request permission
@@ -113,11 +139,19 @@ export default function App() {
   // Dashboard doesn't need the animated background
   if (screen === 'dashboard' && session) {
     return (
-      <Dashboard
-        userName={userName}
-        userId={session.user.id}
-        onSignOut={handleSignOut}
-      />
+      <>
+        <Dashboard
+          userName={userName}
+          userId={session.user.id}
+          onSignOut={handleSignOut}
+        />
+        {isLocked && (
+          <SessionLockScreen
+            email={session.user.email || session.user.phone || ''}
+            onUnlocked={handleUnlocked}
+          />
+        )}
+      </>
     );
   }
 

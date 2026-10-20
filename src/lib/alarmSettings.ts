@@ -62,7 +62,7 @@ export async function showHabitAlarmNotification(habitTitle: string) {
         { action: "stop-alarm", title: "Stop Alarm" },
         { action: "snooze", title: "Snooze 5 min" },
       ],
-    });
+    } as NotificationOptions);
   } catch (err) {
     console.error("Notification error:", err);
   }

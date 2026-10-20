@@ -50,10 +50,26 @@ async function resolveAlarmSource(): Promise<AlarmSource> {
   return { kind: 'preset', presetId: settings.presetId };
 }
 
+const TRIGGERED_PREFIX = 'orbit-alarm-triggered';
+
+/**
+ * Persist fired alarms in sessionStorage keyed by habit id + type + date so
+ * a page reload or re-login never re-triggers an alarm that already fired
+ * today. Returns true if the alarm has already been recorded as fired.
+ */
+function wasTriggered(habitId: string, type: 'start' | 'end', dateStr: string): boolean {
+  if (typeof sessionStorage === 'undefined') return false;
+  return sessionStorage.getItem(`${TRIGGERED_PREFIX}:${habitId}:${type}:${dateStr}`) === '1';
+}
+
+function markTriggered(habitId: string, type: 'start' | 'end', dateStr: string): void {
+  if (typeof sessionStorage === 'undefined') return;
+  sessionStorage.setItem(`${TRIGGERED_PREFIX}:${habitId}:${type}:${dateStr}`, '1');
+}
+
 export function useAlarms(habits: AlarmHabit[]) {
   const [activeAlarm, setActiveAlarm] = useState<ActiveAlarm | null>(null);
 
-  const triggeredRef = useRef<Set<string>>(new Set());
   const snoozesRef = useRef<Map<string, PendingSnooze>>(new Map());
   const habitsRef = useRef(habits);
   const alarmHandleRef = useRef<AlarmHandle | null>(null);
@@ -74,12 +90,6 @@ export function useAlarms(habits: AlarmHabit[]) {
       Notification.requestPermission().catch(() => {});
     }
   }, []);
-
-  // Reset the per-day triggered set when the habit set length changes
-  // (e.g. a new day reloads habits). Existing triggers for today remain.
-  useEffect(() => {
-    triggeredRef.current = new Set();
-  }, [habits.length]);
 
   /**
    * Fire an alarm: start the looping loud sound and show the overlay.
@@ -151,12 +161,14 @@ export function useAlarms(habits: AlarmHabit[]) {
   }, [stopSound]);
 
   const checkAlarms = useCallback(() => {
-    const now = Date.now();
-    const todayStr = new Date().toDateString();
+    const now = new Date();
+    const todayStr = now.toDateString();
+    const curH = now.getHours();
+    const curM = now.getMinutes();
 
     // Re-fire snoozed alarms whose window has elapsed.
     for (const [key, pending] of snoozesRef.current.entries()) {
-      if (now >= pending.fireAt) {
+      if (Date.now() >= pending.fireAt) {
         snoozesRef.current.delete(key);
         const habit = habitsRef.current.find((h) => h.id === pending.habitId);
         if (habit) {
@@ -169,31 +181,26 @@ export function useAlarms(habits: AlarmHabit[]) {
       const [sh, sm] = habit.start_time.split(':').map(Number);
       const [eh, em] = habit.end_time.split(':').map(Number);
 
-      const startTime = new Date();
-      startTime.setHours(sh, sm, 0, 0);
-
-      const endTime = new Date();
-      endTime.setHours(eh, em, 0, 0);
-
-      const startKey = `${habit.id}-start-${todayStr}`;
-      const endKey = `${habit.id}-end-${todayStr}`;
+      // Only fire when the current minute exactly matches the habit's
+      // start or end time — not whenever now is past the scheduled time.
+      const startMatches = curH === sh && curM === sm;
+      const endMatches = curH === eh && curM === em;
 
       if (
-        now >= startTime.getTime() &&
-        now < endTime.getTime() &&
-        !triggeredRef.current.has(startKey) &&
+        startMatches &&
+        !wasTriggered(habit.id, 'start', todayStr) &&
         !snoozesRef.current.has(`${habit.id}-start`)
       ) {
-        triggeredRef.current.add(startKey);
+        markTriggered(habit.id, 'start', todayStr);
         void fireAlarm(habit, 'start');
       }
 
       if (
-        now >= endTime.getTime() &&
-        !triggeredRef.current.has(endKey) &&
+        endMatches &&
+        !wasTriggered(habit.id, 'end', todayStr) &&
         !snoozesRef.current.has(`${habit.id}-end`)
       ) {
-        triggeredRef.current.add(endKey);
+        markTriggered(habit.id, 'end', todayStr);
         void fireAlarm(habit, 'end');
       }
     });
