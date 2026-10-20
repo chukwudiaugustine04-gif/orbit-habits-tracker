@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Bell, Hand, Square } from 'lucide-react';
 import type { ActiveAlarm } from '@/lib/useAlarms';
 import { loadAlarmSettings } from '@/lib/alarmSettings';
+import { showHabitAlarmNotification } from '../lib/alarmSettings';
 
 interface AlarmOverlayProps {
   alarm: ActiveAlarm;
@@ -27,7 +28,53 @@ export default function AlarmOverlay({ alarm, onDismiss, onSnooze }: AlarmOverla
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onDismiss, onSnooze]);
+// Trigger system notification when alarm opens
+  useEffect(() => {
+    if (alarm?.habitTitle) {
+      showHabitAlarmNotification(alarm.habitTitle);
+    }
+  }, [alarm?.habitTitle]);
 
+  // Listen for actions clicked in the Notification Shade (Stop / Snooze)
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'STOP_ALARM') {
+        onDismiss();
+      } else if (event.data?.type === 'SNOOZE_ALARM') {
+        onSnooze();
+      }
+    };
+
+    navigator.serviceWorker.addEventListener('message', handleMessage);
+    return () => {
+      navigator.serviceWorker.removeEventListener('message', handleMessage);
+    };
+  }, [onDismiss, onSnooze]);  
+  useEffect(() => {
+    if (alarm?.habitTitle) {
+      showHabitAlarmNotification(alarm.habitTitle);
+    }
+  }, [alarm?.habitTitle]);
+
+  // Listen for actions clicked in the Notification Shade (Stop / Snooze)
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'STOP_ALARM') {
+        onDismiss();
+      } else if (event.data?.type === 'SNOOZE_ALARM') {
+        onSnooze();
+      }
+    };
+
+    navigator.serviceWorker.addEventListener('message', handleMessage);
+    return () => {
+      navigator.serviceWorker.removeEventListener('message', handleMessage);
+    };
+  }, [onDismiss, onSnooze]);
   const timeStr = new Date(alarm.triggeredAt).toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
