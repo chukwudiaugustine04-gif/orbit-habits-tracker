@@ -45,3 +45,31 @@ export function saveAlarmSettings(settings: AlarmSettings): void {
   if (typeof localStorage === 'undefined') return;
   localStorage.setItem(KEY, JSON.stringify(settings));
 }
+export async function initAlarmNotificationSystem() {
+  if (!('serviceWorker' in navigator) || !('Notification' in window)) return false;
+  try {
+    const registration = await navigator.serviceWorker.register('/sw.js');
+    const permission = await Notification.requestPermission();
+    return permission === 'granted';
+  } catch (error) {
+    console.error('Service Worker registration failed:', error);
+    return false;
+  }
+}
+
+export async function showHabitAlarmNotification(habitTitle: string) {
+  if (!('serviceWorker' in navigator)) return;
+  const registration = await navigator.serviceWorker.ready;
+
+  registration.showNotification(Habit Time Up: ${habitTitle}, {
+    body: 'Time to complete your habit! Click below to control the alarm.',
+    icon: '/pwa-192x192.svg',
+    tag: 'habit-alarm-notification',
+    requireInteraction: true,
+    vibrate: [500, 250, 500, 250, 500],
+    actions: [
+      { action: 'stop-alarm', title: 'Stop Alarm' },
+      { action: 'snooze', title: 'Snooze 5 min' },
+    ],
+  });
+}
