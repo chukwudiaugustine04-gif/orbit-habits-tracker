@@ -47,17 +47,22 @@ export function saveAlarmSettings(settings: AlarmSettings): void {
 }
 export async function showHabitAlarmNotification(habitTitle: string) {
   if (!('serviceWorker' in navigator)) return;
-  const registration = await navigator.serviceWorker.ready;
+  
+  try {
+    const registration = await navigator.serviceWorker.ready;
 
-  registration.showNotification(Habit Time Up: ${habitTitle}, {
-    body: 'Time to complete your habit! Click below to control the alarm.',
-    icon: '/pwa-192x192.svg',
-    tag: 'habit-alarm-notification',
-    requireInteraction: true,
-    vibrate: [500, 250, 500, 250, 500],
-    actions: [
-      { action: 'stop-alarm', title: 'Stop Alarm' },
-      { action: 'snooze', title: 'Snooze 5 min' },
-    ],
-  });
+    registration.showNotification(Habit Time Up: ${habitTitle}, {
+      body: Time to complete your habit! Click below to control the alarm.,
+      icon: '/pwa-192x192.svg',
+      tag: 'habit-alarm-notification',
+      requireInteraction: true,
+      vibrate: [500, 250, 500, 250, 500],
+      actions: [
+        { action: 'stop-alarm', title: 'Stop Alarm' },
+        { action: 'snooze', title: 'Snooze 5 min' }
+      ]
+    });
+  } catch (err) {
+    console.error('Failed to trigger notification:', err);
+  }
 }
