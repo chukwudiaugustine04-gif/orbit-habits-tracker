@@ -76,6 +76,19 @@ export default function App() {
     // Initialize the alarm notification system & request permission
   initAlarmNotificationSystem();
     
+    // Listen for Service Worker notification actions (Stop/Snooze)
+    if ('serviceWorker' in navigator) {
+      const handleMessage = (event: MessageEvent) => {
+        if (event.data) {
+          if (event.data.type === 'STOP_ALARM') {
+            window.dispatchEvent(new CustomEvent('STOP_ALARM_EVENT'));
+          } else if (event.data.type === 'SNOOZE_ALARM') {
+            window.dispatchEvent(new CustomEvent('SNOOZE_ALARM_EVENT'));
+          }
+        }
+      };
+      navigator.serviceWorker.addEventListener('message', handleMessage);
+    }
     // Apply saved theme
     const savedTheme = localStorage.getItem('orbit-theme') as ThemeId | null;
     applyTheme(savedTheme || 'dark-space');
