@@ -16,6 +16,7 @@ import { supabase } from '@/lib/supabase';
 import { useAlarms } from '@/lib/useAlarms';
 import { loadStreakData } from '@/lib/streaks';
 import AlarmOverlay from './AlarmOverlay';
+import DigitalClock from './DigitalClock';
 import {
   loadHabitsWithTodayCompletion,
   logHabitCompletion,
@@ -252,14 +253,18 @@ export default function TaskScheduler({ userId: _userId }: TaskSchedulerProps) {
       >
         <div>
           <h1 className="text-2xl font-bold text-white">Sequential Habit Scheduler</h1>
-          <p className="mt-1 flex items-center gap-1.5 text-sm text-white/40">
-            <Calendar size={13} />
-            {new Date().toLocaleDateString('en-US', {
-              weekday: 'long',
-              month: 'long',
-              day: 'numeric',
-            })}
-          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-3">
+            <p className="flex items-center gap-1.5 text-sm text-white/40">
+              <Calendar size={13} />
+              {new Date().toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric',
+              })}
+            </p>
+            <span className="h-3 w-px bg-white/15" />
+            <DigitalClock />
+          </div>
         </div>
         <button
           onClick={() => setShowModal(true)}

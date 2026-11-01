@@ -3,8 +3,6 @@ import { motion } from 'framer-motion';
 import { Bell, Hand, Square } from 'lucide-react';
 import type { ActiveAlarm } from '@/lib/useAlarms';
 import { loadAlarmSettings } from '@/lib/alarmSettings';
-import { showHabitAlarmNotification } from '../lib/alarmSettings';
-import { getCustomAudio } from '@/lib/audioStorage';
 
 interface AlarmOverlayProps {
   alarm: ActiveAlarm;
@@ -29,14 +27,11 @@ export default function AlarmOverlay({ alarm, onDismiss, onSnooze }: AlarmOverla
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onDismiss, onSnooze]);
-// Trigger system notification when alarm opens
-  useEffect(() => {
-    if (alarm?.habitTitle) {
-      showHabitAlarmNotification(alarm.habitTitle);
-    }
-  }, [alarm?.habitTitle]);
 
-  // Listen for actions clicked in the Notification Shade (Stop / Snooze)
+  // Listen for Stop/Snooze actions clicked in the system notification.
+  // The Service Worker posts a message to all open clients; we forward
+  // it to the alarm hook here so the user does NOT need to switch to
+  // the app window for these buttons to work.
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
@@ -52,44 +47,8 @@ export default function AlarmOverlay({ alarm, onDismiss, onSnooze }: AlarmOverla
     return () => {
       navigator.serviceWorker.removeEventListener('message', handleMessage);
     };
-  }, [onDismiss, onSnooze]);  
-  // Play custom audio from IndexedDB (or fallback default)
-  useEffect(() => {
-    let audioUrl: string | null = null;
-    let audioElement: HTMLAudioElement | null = null;
+  }, [onDismiss, onSnooze]);
 
-    async function playAudio() {
-      const customAudioId = localStorage.getItem('orbit-custom-alarm-sound');
-      
-      if (customAudioId) {
-        const audioBlob = await getCustomAudio(customAudioId);
-        if (audioBlob) {
-          audioUrl = URL.createObjectURL(audioBlob);
-          audioElement = new Audio(audioUrl);
-          audioElement.loop = true;
-          audioElement.play().catch(console.error);
-          return;
-        }
-      }
-
-      // Default fallback sound if no custom sound is set
-      audioElement = new Audio('/alarm-default.mp3');
-      audioElement.loop = true;
-      audioElement.play().catch(console.error);
-    }
-
-    playAudio();
-
-    return () => {
-      if (audioElement) {
-        audioElement.pause();
-        audioElement.currentTime = 0;
-      }
-      if (audioUrl) {
-        URL.revokeObjectURL(audioUrl);
-      }
-    };
-  }, []);
   const timeStr = new Date(alarm.triggeredAt).toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',

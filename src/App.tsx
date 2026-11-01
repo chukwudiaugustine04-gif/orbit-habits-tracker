@@ -4,11 +4,16 @@ import OnboardingScreen from '@/components/OnboardingScreen';
 import AuthScreen from '@/components/AuthScreen';
 import Dashboard from '@/components/Dashboard';
 import SessionLockScreen from '@/components/SessionLockScreen';
+import PrivacyPolicy from '@/components/PrivacyPolicy';
 import { supabase } from '@/lib/supabase';
 import { applyTheme, type ThemeId } from '@/lib/themes';
 import type { Session } from '@supabase/supabase-js';
 import { InstallPrompt } from "./components/InstallPrompt";
 import { initAlarmNotificationSystem } from "./lib/alarmSettings";
+
+function isPrivacyRoute(): boolean {
+  return typeof window !== 'undefined' && window.location.pathname === '/privacy';
+}
 
 const LOCK_KEY = 'orbit-session-locked';
 
@@ -75,20 +80,6 @@ export default function App() {
   useEffect(() => {
     // Initialize the alarm notification system & request permission
   initAlarmNotificationSystem();
-    
-    // Listen for Service Worker notification actions (Stop/Snooze)
-    if ('serviceWorker' in navigator) {
-      const handleMessage = (event: MessageEvent) => {
-        if (event.data) {
-          if (event.data.type === 'STOP_ALARM') {
-            window.dispatchEvent(new CustomEvent('STOP_ALARM_EVENT'));
-          } else if (event.data.type === 'SNOOZE_ALARM') {
-            window.dispatchEvent(new CustomEvent('SNOOZE_ALARM_EVENT'));
-          }
-        }
-      };
-      navigator.serviceWorker.addEventListener('message', handleMessage);
-    }
     // Apply saved theme
     const savedTheme = localStorage.getItem('orbit-theme') as ThemeId | null;
     applyTheme(savedTheme || 'dark-space');
@@ -149,6 +140,11 @@ export default function App() {
     );
   }
 
+  // Privacy Policy is public — no auth required
+  if (isPrivacyRoute()) {
+    return <PrivacyPolicy />;
+  }
+
   // Dashboard doesn't need the animated background
   if (screen === 'dashboard' && session) {
     return (
@@ -193,7 +189,7 @@ export default function App() {
       
 <InstallPrompt />
       
-      <div className="relative z-10 flex min-h-screen items-center justify-center px-4 py-12">
+      <div className="relative z-10 flex min-h-screen items-center justify-center px-4 py-12 pb-20">
         <AnimatePresence mode="wait">
           {screen === 'onboarding' && (
             <OnboardingScreen
@@ -230,6 +226,16 @@ export default function App() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Footer with Privacy Policy link — visible on landing page for Google crawlers */}
+      <footer className="relative z-10 flex items-center justify-center pb-6">
+        <a
+          href="/privacy"
+          className="text-xs text-white/30 transition-colors hover:text-cyan-400"
+        >
+          Privacy Policy
+        </a>
+      </footer>
     </div>
   );
 }

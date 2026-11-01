@@ -3,6 +3,7 @@ import OrbitLogo from './OrbitLogo';
 import { LogOut, User, Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { InterfaceTab } from '@/lib/types';
+import DigitalClock from './DigitalClock';
 
 interface HeaderProps {
   showSlogan?: boolean;
@@ -72,6 +73,10 @@ export default function Header({
             </div>
 
             <div className="flex items-center gap-3">
+              {/* Digital clock — visible on desktop */}
+              <div className="hidden md:block">
+                <DigitalClock />
+              </div>
               {/* User profile */}
               <div className="flex items-center gap-2.5">
                 <div className="hidden text-right sm:block">

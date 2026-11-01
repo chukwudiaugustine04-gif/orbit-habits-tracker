@@ -73,6 +73,8 @@ export function useAlarms(habits: AlarmHabit[]) {
   const snoozesRef = useRef<Map<string, PendingSnooze>>(new Map());
   const habitsRef = useRef(habits);
   const alarmHandleRef = useRef<AlarmHandle | null>(null);
+  const dismissRef = useRef<() => void>(() => {});
+  const snoozeRef = useRef<() => void>(() => {});
 
   habitsRef.current = habits;
 
@@ -84,6 +86,11 @@ export function useAlarms(habits: AlarmHabit[]) {
     }
   }, []);
 
+  // Keep dismiss/snooze refs current so the SW message handler (registered
+  // once on mount) always calls the latest closures.
+  // The sound keeps ringing until the user dismisses it from the overlay
+  // or from the system notification action buttons.
+
   // Request notification permission once on mount.
   useEffect(() => {
     if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
@@ -92,8 +99,10 @@ export function useAlarms(habits: AlarmHabit[]) {
   }, []);
 
   /**
-   * Fire an alarm: start the looping loud sound and show the overlay.
-   * The sound keeps ringing until the user dismisses it from the overlay.
+   * Fire an alarm: start the designated sound for this task and show
+   * a system notification with Stop/Snooze action buttons. The sound
+   * plays only the assigned track (looped) until stopped or dismissed —
+   * no playlist, no overlapping streams.
    */
   const fireAlarm = useCallback(
     async (habit: AlarmHabit, type: 'start' | 'end') => {
@@ -111,17 +120,26 @@ export function useAlarms(habits: AlarmHabit[]) {
         type,
         triggeredAt: Date.now(),
       });
-      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      // Show a single notification with Stop/Snooze action buttons via
+      // the Service Worker so the buttons work even when the tab is in
+      // the background.
+      if ('serviceWorker' in navigator && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
         try {
-          new Notification(`Orbit: ${habit.title}`, {
+          const registration = await navigator.serviceWorker.ready;
+          await registration.showNotification(`Orbit: ${habit.title}`, {
             body:
               type === 'start'
                 ? `Time to start ${habit.title} (${habit.start_time})`
                 : `${habit.title} time is up (${habit.end_time}). Mark it complete!`,
-            icon: '/vite.svg',
-            tag: `orbit-${habit.id}-${type}-${Date.now()}`,
+            icon: '/pwa-192x192.svg',
+            tag: `orbit-${habit.id}-${type}`,
             requireInteraction: true,
-          });
+            vibrate: [500, 250, 500, 250, 500],
+            actions: [
+              { action: 'stop-alarm', title: 'Stop' },
+              { action: 'snooze', title: `Snooze ${loadAlarmSettings().snoozeMinutes}m` },
+            ],
+          } as NotificationOptions);
         } catch {
           // non-fatal
         }
@@ -131,9 +149,9 @@ export function useAlarms(habits: AlarmHabit[]) {
   );
 
   /**
-   * Called by the overlay when the user taps Stop. Stops the sound and
-   * dismisses the overlay. The triggered key stays set so the alarm does
-   * not re-fire for the same habit/time today.
+   * Called by the overlay or SW handler when the user taps Stop.
+   * Stops the sound and dismisses the overlay. The triggered key stays
+   * set so the alarm does not re-fire for the same habit/time today.
    */
   const dismissAlarm = useCallback(() => {
     stopSound();
@@ -141,9 +159,9 @@ export function useAlarms(habits: AlarmHabit[]) {
   }, [stopSound]);
 
   /**
-   * Called by the overlay when the user taps Snooze. Stops the sound,
-   * hides the overlay, and schedules a re-fire after the configured snooze
-   * window.
+   * Called by the overlay or SW handler when the user taps Snooze.
+   * Stops the sound, hides the overlay, and schedules a re-fire after
+   * the configured snooze window.
    */
   const snoozeAlarm = useCallback(() => {
     setActiveAlarm((current) => {
@@ -159,6 +177,28 @@ export function useAlarms(habits: AlarmHabit[]) {
     });
     stopSound();
   }, [stopSound]);
+
+  // Keep refs in sync so the global SW message listener always uses the
+  // latest dismiss/snooze functions.
+  dismissRef.current = dismissAlarm;
+  snoozeRef.current = snoozeAlarm;
+
+  // Register a single global listener for Service Worker messages (Stop/Snooze).
+  // This runs once on mount and dispatches to the current dismiss/snooze.
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'STOP_ALARM') {
+        dismissRef.current();
+      } else if (event.data?.type === 'SNOOZE_ALARM') {
+        snoozeRef.current();
+      }
+    };
+
+    navigator.serviceWorker.addEventListener('message', handleMessage);
+    return () => navigator.serviceWorker.removeEventListener('message', handleMessage);
+  }, []);
 
   const checkAlarms = useCallback(() => {
     const now = new Date();
