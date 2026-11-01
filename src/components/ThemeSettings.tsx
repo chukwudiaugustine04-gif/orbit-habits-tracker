@@ -15,6 +15,8 @@ import {
   Upload,
   Loader2,
   Trash2,
+  ShieldCheck,
+  Timer,
 } from 'lucide-react';
 import {
   themes,
@@ -31,6 +33,12 @@ import { supabase } from '@/lib/supabase';
 import { computeStreakFromLogs } from '@/lib/streaks';
 import type { Habit } from '@/lib/types';
 import AlarmSettings from './AlarmSettings';
+import {
+  AUTO_LOGOUT_OPTIONS,
+  loadAutoLogoutMinutes,
+  saveAutoLogoutMinutes,
+  type AutoLogoutMinutes,
+} from '@/lib/useAutoLogout';
 
 interface ThemeSettingsProps {
   userName: string;
@@ -64,6 +72,7 @@ export default function ThemeSettings({ userName }: ThemeSettingsProps) {
   const [customAvatarUrl, setCustomAvatarUrl] = useState<string | null>(null);
   const [streak, setStreak] = useState(0);
   const [totalCompletions, setTotalCompletions] = useState(0);
+  const [autoLogoutMinutes, setAutoLogoutMinutes] = useState<AutoLogoutMinutes>(() => loadAutoLogoutMinutes());
 
   // Custom theme generator state
   const [customTheme, setCustomTheme] = useState<Theme | null>(null);
@@ -605,6 +614,51 @@ export default function ThemeSettings({ userName }: ThemeSettingsProps) {
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>of {badges.length}</p>
         </div>
       </motion.div>
+
+      {/* Auto-Logout / Session Timeout */}
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="mb-8"
+      >
+        <div className="mb-4 flex items-center gap-2">
+          <Timer size={18} style={{ color: 'var(--accent-primary)' }} />
+          <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+            Auto-Logout
+          </h2>
+        </div>
+        <div
+          className="rounded-xl border p-6"
+          style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-card)' }}
+        >
+          <p className="mb-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
+            Automatically sign you out after a period of inactivity for your security.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {AUTO_LOGOUT_OPTIONS.map((opt) => {
+              const selected = autoLogoutMinutes === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  onClick={() => {
+                    setAutoLogoutMinutes(opt.value);
+                    saveAutoLogoutMinutes(opt.value);
+                  }}
+                  className="rounded-lg border px-4 py-2 text-xs font-medium transition-all"
+                  style={{
+                    borderColor: selected ? 'var(--accent-primary)' : 'var(--border-subtle)',
+                    background: selected ? 'var(--accent-glow)' : 'transparent',
+                    color: selected ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                  }}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </motion.section>
 
       {/* Custom Footer */}
       <motion.footer

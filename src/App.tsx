@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import OnboardingScreen from '@/components/OnboardingScreen';
 import AuthScreen from '@/components/AuthScreen';
@@ -10,6 +10,7 @@ import { applyTheme, type ThemeId } from '@/lib/themes';
 import type { Session } from '@supabase/supabase-js';
 import { InstallPrompt } from "./components/InstallPrompt";
 import { initAlarmNotificationSystem } from "./lib/alarmSettings";
+import { useAutoLogout } from "./lib/useAutoLogout";
 
 function isPrivacyRoute(): boolean {
   return typeof window !== 'undefined' && window.location.pathname === '/privacy';
@@ -53,6 +54,7 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
+  const [inactivityMessage, setInactivityMessage] = useState(false);
 
   // Session lock: flag the session as locked whenever the tab is hidden,
   // and show the lock screen when the user returns. Only applies once the
@@ -132,6 +134,19 @@ export default function App() {
     setScreen('onboarding');
   };
 
+  const handleAutoLogout = useCallback(async () => {
+    await supabase.auth.signOut();
+    localStorage.removeItem(NAME_KEY);
+    setSession(null);
+    setUserName('');
+    setScreen('auth');
+    setInactivityMessage(true);
+    setTimeout(() => setInactivityMessage(false), 6000);
+  }, []);
+
+  // Activate the inactivity timer only while the user is in the dashboard
+  useAutoLogout(screen === 'dashboard' && !!session, handleAutoLogout);
+
   if (!authReady) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0a0e1a]">
@@ -204,8 +219,12 @@ export default function App() {
           {screen === 'auth' && (
             <AuthScreen
               key="auth"
+              inactivityMessage={inactivityMessage}
               userName={userName}
-              onBack={() => setScreen('onboarding')}
+              onBack={() => {
+                setInactivityMessage(false);
+                setScreen('onboarding');
+              }}
               onAuthenticated={() => {
                 // Session is set by onAuthStateChange; this is a fallback for OTP flows
                 supabase.auth.getSession().then(({ data }) => {

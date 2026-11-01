@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   AlertCircle,
   KeyRound,
+  Clock,
 } from 'lucide-react';
 import OrbitLogo from './OrbitLogo';
 import OtpModal from './OtpModal';
@@ -24,6 +25,7 @@ interface AuthScreenProps {
   userName: string;
   onBack: () => void;
   onAuthenticated: () => void;
+  inactivityMessage?: boolean;
 }
 
 interface OtpState {
@@ -33,7 +35,7 @@ interface OtpState {
   target: string;
 }
 
-export default function AuthScreen({ userName, onBack, onAuthenticated }: AuthScreenProps) {
+export default function AuthScreen({ userName, onBack, onAuthenticated, inactivityMessage }: AuthScreenProps) {
   const [mode, setMode] = useState<AuthMode>('login');
 
   // Email state
@@ -363,6 +365,20 @@ export default function AuthScreen({ userName, onBack, onAuthenticated }: AuthSc
           <ArrowLeft size={14} />
           Back
         </button>
+
+        {/* Inactivity logout banner */}
+        {inactivityMessage && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            className="mb-4 overflow-hidden"
+          >
+            <div className="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2.5 text-xs text-amber-400">
+              <Clock size={14} />
+              Session expired due to inactivity. Please sign in again.
+            </div>
+          </motion.div>
+        )}
 
         {/* Greeting */}
         <div className="mb-6">
