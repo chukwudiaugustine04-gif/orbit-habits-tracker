@@ -147,17 +147,19 @@ export default function App() {
   // Activate the inactivity timer only while the user is in the dashboard
   useAutoLogout(screen === 'dashboard' && !!session, handleAutoLogout);
 
+  // Privacy Policy is fully public — render immediately, before any
+  // auth check, so unauthenticated visitors and crawlers never hit a
+  // loading spinner, redirect, or login wall.
+  if (isPrivacyRoute()) {
+    return <PrivacyPolicy />;
+  }
+
   if (!authReady) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0a0e1a]">
         <div className="h-8 w-8 rounded-full border-2 border-cyan-400/30 border-t-cyan-400 animate-spin" />
       </div>
     );
-  }
-
-  // Privacy Policy is public — no auth required
-  if (isPrivacyRoute()) {
-    return <PrivacyPolicy />;
   }
 
   // Dashboard doesn't need the animated background
