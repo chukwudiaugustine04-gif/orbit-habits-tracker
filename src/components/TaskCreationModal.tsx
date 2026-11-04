@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, Clock, Heart, Briefcase, User, Brain } from 'lucide-react';
 import type { HabitCategory } from '@/lib/types';
 import { HABIT_CATEGORIES } from '@/lib/types';
+import DigitalTimeInput from './DigitalTimeInput';
 
 interface TaskCreationModalProps {
   open: boolean;
@@ -158,23 +159,13 @@ export default function TaskCreationModal({
                 <label className="mb-2 flex items-center gap-1 text-xs font-medium uppercase tracking-wider text-white/50">
                   <Clock size={11} /> Start
                 </label>
-                <input
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-white outline-none transition-all focus:border-cyan-400/50 [color-scheme:dark]"
-                />
+                <DigitalTimeInput value={startTime} onChange={setStartTime} />
               </div>
               <div>
                 <label className="mb-2 flex items-center gap-1 text-xs font-medium uppercase tracking-wider text-white/50">
                   <Clock size={11} /> End
                 </label>
-                <input
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-white outline-none transition-all focus:border-cyan-400/50 [color-scheme:dark]"
-                />
+                <DigitalTimeInput value={endTime} onChange={setEndTime} />
               </div>
             </div>
 

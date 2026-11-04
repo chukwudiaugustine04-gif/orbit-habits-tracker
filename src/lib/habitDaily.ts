@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import type { Habit } from '@/lib/types';
+import { applyPendingToHabits, cacheHabits, loadCachedHabits } from '@/lib/offlineSync';
 
 /**
  * Returns today's date in the user's local timezone as YYYY-MM-DD.
@@ -24,33 +25,38 @@ export function todayLocalDate(d: Date = new Date()): string {
 export async function loadHabitsWithTodayCompletion(): Promise<Habit[]> {
   const today = todayLocalDate();
 
-  const [habitsRes, logsRes] = await Promise.all([
-    supabase.from('habits').select('*').order('position', { ascending: true }),
-    supabase
-      .from('completion_logs')
-      .select('habit_id, completed_date')
-      .eq('completed_date', today),
-  ]);
+  try {
+    const [habitsRes, logsRes] = await Promise.all([
+      supabase.from('habits').select('*').order('position', { ascending: true }),
+      supabase
+        .from('completion_logs')
+        .select('habit_id, completed_date')
+        .eq('completed_date', today),
+    ]);
 
-  if (habitsRes.error) {
-    console.error('Failed to load habits:', habitsRes.error.message);
-    return [];
+    if (habitsRes.error) throw new Error(habitsRes.error.message);
+    if (logsRes.error) throw new Error(logsRes.error.message);
+
+    const completedHabitIds = new Set(
+      (logsRes.data || [])
+        .map((r) => r.habit_id as string | null)
+        .filter((id): id is string => !!id)
+    );
+
+    const habits = ((habitsRes.data as Habit[]) || []).map((h) => ({
+      ...h,
+      // Derive today's completion from the log set. Past days' logs remain
+      // in the database untouched and still power streaks/analytics.
+      completed: completedHabitIds.has(h.id),
+      completed_at: completedHabitIds.has(h.id) ? h.completed_at : null,
+    }));
+
+    cacheHabits(habits);
+    return applyPendingToHabits(habits, today);
+  } catch (err) {
+    console.error('Failed to load habits, using offline copy:', err instanceof Error ? err.message : err);
+    return applyPendingToHabits(loadCachedHabits(), today);
   }
-
-  const completedHabitIds = new Set(
-    (logsRes.data || [])
-      .map((r) => r.habit_id as string | null)
-      .filter((id): id is string => !!id)
-  );
-
-  const habits = (habitsRes.data as Habit[]) || [];
-  return habits.map((h) => ({
-    ...h,
-    // Derive today's completion from the log set. Past days' logs remain
-    // in the database untouched and still power streaks/analytics.
-    completed: completedHabitIds.has(h.id),
-    completed_at: completedHabitIds.has(h.id) ? h.completed_at : null,
-  }));
 }
 
 /**

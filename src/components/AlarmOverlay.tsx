@@ -81,6 +81,9 @@ export default function AlarmOverlay({ alarm, onDismiss, onSnooze }: AlarmOverla
       </motion.div>
 
       <motion.div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="alarm-title"
         initial={{ scale: 0.9, y: 10 }}
         animate={{ scale: 1, y: 0 }}
         className="relative z-10 mx-6 w-full max-w-md rounded-3xl border border-white/10 bg-[#0a0e1a]/80 p-8 text-center shadow-2xl"
@@ -97,7 +100,7 @@ export default function AlarmOverlay({ alarm, onDismiss, onSnooze }: AlarmOverla
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-red-400">
           {alarm.type === 'start' ? 'Habit Starting' : 'Habit Time Up'}
         </p>
-        <h2 className="mt-3 text-3xl font-bold text-white">{alarm.habitTitle}</h2>
+        <h2 id="alarm-title" className="mt-3 text-3xl font-bold text-white">{alarm.habitTitle}</h2>
         <p className="mt-2 text-sm text-white/50">Triggered at {timeStr}</p>
 
         <div className="mt-8 flex flex-col gap-3">
@@ -108,7 +111,7 @@ export default function AlarmOverlay({ alarm, onDismiss, onSnooze }: AlarmOverla
             className="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-red-500 to-rose-600 px-6 py-4 text-base font-bold text-white shadow-lg shadow-red-500/30 transition-all hover:shadow-red-500/50"
           >
             <Square size={18} className="fill-current" />
-            Stop Alarm
+            Dismiss / Turn Off
           </motion.button>
           <motion.button
             whileHover={{ scale: 1.02 }}
@@ -122,7 +125,7 @@ export default function AlarmOverlay({ alarm, onDismiss, onSnooze }: AlarmOverla
         </div>
 
         <p className="mt-5 text-[11px] text-white/30">
-          Press <span className="font-semibold text-white/50">Esc</span> to stop · <span className="font-semibold text-white/50">Space</span> to snooze
+          Press <span className="font-semibold text-white/50">Esc</span> to turn off · <span className="font-semibold text-white/50">Space</span> to snooze
         </p>
       </motion.div>
     </motion.div>

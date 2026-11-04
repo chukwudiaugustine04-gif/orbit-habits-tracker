@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAlarms } from '@/lib/useAlarms';
+import { enqueueCompletion, flushPendingCompletions, isNetworkFailure } from '@/lib/offlineSync';
+import OfflineStatusBanner from './OfflineStatusBanner';
 import { loadStreakData } from '@/lib/streaks';
 import AlarmOverlay from './AlarmOverlay';
 import DueTaskToast from './DueTaskToast';
@@ -132,6 +134,19 @@ export default function TaskScheduler({ userId: _userId }: TaskSchedulerProps) {
     loadStreak();
   }, [loadHabits, loadStreak]);
 
+  useEffect(() => {
+    const syncPending = async () => {
+      const synced = await flushPendingCompletions();
+      if (synced > 0) {
+        await loadHabits();
+        await loadStreak();
+      }
+    };
+    syncPending();
+    window.addEventListener('online', syncPending);
+    return () => window.removeEventListener('online', syncPending);
+  }, [loadHabits, loadStreak]);
+
   // Daily reset at midnight — since completion state is derived from
   // completion_logs keyed by calendar date, a new day naturally shows all
   // habits as incomplete. We just reload from the logs so the UI flips over
@@ -198,6 +213,10 @@ export default function TaskScheduler({ userId: _userId }: TaskSchedulerProps) {
         await clearHabitCompletionToday(habit.id);
       }
     } catch (err) {
+      if (isNetworkFailure(err)) {
+        enqueueCompletion(habit, newCompleted ? 'complete' : 'uncomplete', todayLocalDate());
+        return;
+      }
       console.error('Failed to toggle habit completion:', (err as Error).message);
       // Revert optimistic update on failure
       setHabits((prev) =>
@@ -310,6 +329,8 @@ export default function TaskScheduler({ userId: _userId }: TaskSchedulerProps) {
           Habits auto-unlock at midnight
         </div>
       </motion.div>
+
+      <OfflineStatusBanner />
 
       {/* Progress tracker */}
       <div className="mb-8">
