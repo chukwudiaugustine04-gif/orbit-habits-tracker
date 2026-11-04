@@ -19,7 +19,7 @@ const navTabs: { id: InterfaceTab; label: string }[] = [
   { id: 'health', label: 'Health' },
   { id: 'integrations', label: 'Integrations' },
   { id: 'analytics', label: 'Analytics' },
-  { id: 'themes', label: 'Themes' },
+  { id: 'settings', label: 'Settings' },
 ];
 
 export default function Header({

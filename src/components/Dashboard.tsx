@@ -76,7 +76,7 @@ export default function Dashboard({ userName, userId, onSignOut }: DashboardProp
             <PerformanceDashboard userName={userName} />
           </motion.div>
         )}
-        {activeTab === 'themes' && (
+        {activeTab === 'settings' && (
           <motion.div
             key="themes"
             initial={{ opacity: 0, y: 10 }}
@@ -84,7 +84,7 @@ export default function Dashboard({ userName, userId, onSignOut }: DashboardProp
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.25 }}
           >
-            <ThemeSettings userName={userName} />
+            <ThemeSettings userName={userName} onSignOut={onSignOut} />
           </motion.div>
         )}
       </AnimatePresence>

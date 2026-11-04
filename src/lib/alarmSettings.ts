@@ -1,4 +1,6 @@
 import type { PresetId } from "./alarmSounds";
+import { startAlarm, decodeCustomAudio } from "./alarmSounds";
+import { getSound } from "./alarmStorage";
 
 export interface AlarmSettings {
   source: "preset" | "custom";
@@ -8,7 +10,16 @@ export interface AlarmSettings {
   snoozeMinutes: number;
 }
 
+export type DefaultAlertSource = 'preset' | 'custom';
+
+export interface DefaultAlertSettings {
+  source: DefaultAlertSource;
+  presetId: PresetId;
+  customSoundId: string | null;
+}
+
 const KEY = "orbit-alarm-settings";
+const DEFAULT_ALERT_KEY = 'orbit-default-alert-settings';
 
 export const DEFAULT_ALARM_SETTINGS: AlarmSettings = {
   source: "preset",
@@ -17,6 +28,29 @@ export const DEFAULT_ALARM_SETTINGS: AlarmSettings = {
   gainBoost: 2.5,
   snoozeMinutes: 5,
 };
+
+export const DEFAULT_ALERT_DEFAULTS: DefaultAlertSettings = {
+  source: 'preset',
+  presetId: 'gentle-wake',
+  customSoundId: null,
+};
+
+export function loadDefaultAlertSettings(): DefaultAlertSettings {
+  if (typeof localStorage === 'undefined') return { ...DEFAULT_ALERT_DEFAULTS };
+  try {
+    const raw = localStorage.getItem(DEFAULT_ALERT_KEY);
+    if (!raw) return { ...DEFAULT_ALERT_DEFAULTS };
+    const parsed = JSON.parse(raw) as Partial<DefaultAlertSettings>;
+    return { ...DEFAULT_ALERT_DEFAULTS, ...parsed };
+  } catch {
+    return { ...DEFAULT_ALERT_DEFAULTS };
+  }
+}
+
+export function saveDefaultAlertSettings(settings: DefaultAlertSettings): void {
+  if (typeof localStorage === 'undefined') return;
+  localStorage.setItem(DEFAULT_ALERT_KEY, JSON.stringify(settings));
+}
 
 export function loadAlarmSettings(): AlarmSettings {
   if (typeof localStorage === "undefined") return { ...DEFAULT_ALARM_SETTINGS };
@@ -33,6 +67,26 @@ export function loadAlarmSettings(): AlarmSettings {
 export function saveAlarmSettings(settings: AlarmSettings): void {
   if (typeof localStorage === "undefined") return;
   localStorage.setItem(KEY, JSON.stringify(settings));
+}
+
+/**
+ * Play a one-shot alert chime for task reminders/popups using the Web Audio
+ * engine. Returns a stop handle so callers can stop it early.
+ */
+export async function playDefaultAlertChime(): Promise<{ stop: () => void }> {
+  const settings = loadDefaultAlertSettings();
+  if (settings.source === 'custom' && settings.customSoundId) {
+    try {
+      const stored = await getSound(settings.customSoundId);
+      if (stored) {
+        const buffer = await decodeCustomAudio(stored.arrayBuffer);
+        return startAlarm({ kind: 'custom', customBuffer: buffer }, 1.5);
+      }
+    } catch {
+      // fall through to preset
+    }
+  }
+  return startAlarm({ kind: 'preset', presetId: settings.presetId }, 1.5);
 }
 
 // Notification System Helpers

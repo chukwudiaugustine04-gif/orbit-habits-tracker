@@ -224,6 +224,7 @@ export const themes: Theme[] = [
 ];
 
 const CUSTOM_THEME_KEY = 'orbit-custom-theme';
+const WALLPAPER_KEY = 'orbit-wallpaper-image';
 
 export function applyTheme(themeId: ThemeId) {
   if (themeId === 'custom') {
@@ -231,12 +232,14 @@ export function applyTheme(themeId: ThemeId) {
     if (saved) {
       applyThemeVars(saved.vars);
       document.documentElement.setAttribute('data-theme', 'custom');
+      applyWallpaper();
       return;
     }
   }
   const theme = themes.find((t) => t.id === themeId) || themes[0];
   applyThemeVars(theme.vars);
   document.documentElement.setAttribute('data-theme', themeId);
+  applyWallpaper();
 }
 
 function applyThemeVars(vars: Record<string, string>) {
@@ -269,6 +272,37 @@ export function saveCustomTheme(theme: Theme) {
 
 export function clearCustomTheme() {
   localStorage.removeItem(CUSTOM_THEME_KEY);
+}
+
+export function saveWallpaperImage(dataUrl: string): void {
+  localStorage.setItem(WALLPAPER_KEY, dataUrl);
+  applyWallpaper();
+}
+
+export function loadWallpaperImage(): string | null {
+  return localStorage.getItem(WALLPAPER_KEY);
+}
+
+export function clearWallpaperImage(): void {
+  localStorage.removeItem(WALLPAPER_KEY);
+  applyWallpaper();
+}
+
+export function applyWallpaper(): void {
+  const existing = document.getElementById('orbit-wallpaper-layer');
+  const wp = localStorage.getItem(WALLPAPER_KEY);
+  if (!wp) {
+    if (existing) existing.remove();
+    return;
+  }
+  if (!existing) {
+    const layer = document.createElement('div');
+    layer.id = 'orbit-wallpaper-layer';
+    layer.style.cssText = 'position:fixed;inset:0;z-index:-1;background-size:cover;background-position:center;background-repeat:no-repeat;pointer-events:none;';
+    document.body.appendChild(layer);
+  }
+  const layer = document.getElementById('orbit-wallpaper-layer');
+  if (layer) layer.style.backgroundImage = `url('${wp}')`;
 }
 
 function rgbToHex(r: number, g: number, b: number): string {

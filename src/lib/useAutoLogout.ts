@@ -5,11 +5,9 @@ export type AutoLogoutMinutes = 5 | 10 | 15 | 30 | 0;
 export const AUTO_LOGOUT_KEY = 'orbit-auto-logout-minutes';
 
 export const AUTO_LOGOUT_OPTIONS: { value: AutoLogoutMinutes; label: string }[] = [
+  { value: 0, label: 'Never' },
   { value: 5, label: '5 Minutes' },
   { value: 10, label: '10 Minutes' },
-  { value: 15, label: '15 Minutes' },
-  { value: 30, label: '30 Minutes' },
-  { value: 0, label: 'Never (Keep me signed in)' },
 ];
 
 export function loadAutoLogoutMinutes(): AutoLogoutMinutes {
