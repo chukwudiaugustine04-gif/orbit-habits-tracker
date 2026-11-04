@@ -13,12 +13,18 @@ import {
   AlertCircle,
   Sparkles,
   Smartphone,
+  MapPin,
+  Flame,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { loadHabitsWithTodayCompletion, logHabitCompletion } from '@/lib/habitDaily';
 import { useStepTracker } from '@/lib/useStepTracker';
 import { useHeartRateScan } from '@/lib/useHeartRateScan';
 import type { Habit } from '@/lib/types';
+import EcgWaveform from './EcgWaveform';
+import HeartHistoryPanel from './HeartHistoryPanel';
+
+const KM_PER_MILE = 1.609344;
 
 const STEP_TARGET_KEY = 'orbit-step-target';
 const LAST_BPM_KEY = 'orbit-last-bpm';
@@ -32,6 +38,9 @@ interface HealthHubProps {
 export default function HealthHub({ userName: _userName }: HealthHubProps) {
   const step = useStepTracker();
   const heart = useHeartRateScan();
+  const [distanceUnit, setDistanceUnit] = useState<'km' | 'mi'>(() =>
+    localStorage.getItem('orbit-distance-unit') === 'mi' ? 'mi' : 'km'
+  );
 
   const [healthHabits, setHealthHabits] = useState<Habit[]>([]);
   const [stepTarget, setStepTarget] = useState<number>(() => {
@@ -177,6 +186,42 @@ export default function HealthHub({ userName: _userName }: HealthHubProps) {
               />
             </div>
             <span className="mt-1 text-[10px] text-white/30">motion intensity</span>
+          </div>
+
+          {/* Distance & calories */}
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <div className="rounded-lg border border-white/5 bg-white/[0.02] p-3">
+              <div className="mb-1 flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-[11px] text-white/40">
+                  <MapPin size={12} className="text-cyan-400" />
+                  Distance
+                </div>
+                <button
+                  onClick={() => {
+                    const next = distanceUnit === 'km' ? 'mi' : 'km';
+                    setDistanceUnit(next);
+                    localStorage.setItem('orbit-distance-unit', next);
+                  }}
+                  className="rounded-md border border-white/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-white/50 transition-colors hover:text-white"
+                >
+                  {distanceUnit}
+                </button>
+              </div>
+              <p className="text-lg font-bold text-white">
+                {(distanceUnit === 'km' ? step.distanceKm : step.distanceKm / KM_PER_MILE).toFixed(2)}
+                <span className="ml-1 text-xs font-normal text-white/40">{distanceUnit === 'km' ? 'km' : 'mi'}</span>
+              </p>
+            </div>
+            <div className="rounded-lg border border-white/5 bg-white/[0.02] p-3">
+              <div className="mb-1 flex items-center gap-1.5 text-[11px] text-white/40">
+                <Flame size={12} className="text-orange-400" />
+                Calories
+              </div>
+              <p className="text-lg font-bold text-white">
+                {step.calories.toLocaleString()}
+                <span className="ml-1 text-xs font-normal text-white/40">kcal</span>
+              </p>
+            </div>
           </div>
 
           {/* Controls */}
@@ -338,6 +383,11 @@ export default function HealthHub({ userName: _userName }: HealthHubProps) {
             </span>
           </div>
 
+          {/* Live ECG trace */}
+          <div className="mt-5">
+            <EcgWaveform samples={heart.ecg} active={heart.phase === 'scanning'} />
+          </div>
+
           {/* Hidden video element used by the hook for camera capture */}
           <video ref={heart.videoRef} className="hidden" playsInline muted />
 
@@ -396,6 +446,8 @@ export default function HealthHub({ userName: _userName }: HealthHubProps) {
           </AnimatePresence>
         </motion.div>
       </div>
+
+      <HeartHistoryPanel heart={heart} />
 
       {/* Health habits auto-completion panel */}
       <motion.div

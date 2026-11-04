@@ -16,6 +16,8 @@ import { supabase } from '@/lib/supabase';
 import { useAlarms } from '@/lib/useAlarms';
 import { loadStreakData } from '@/lib/streaks';
 import AlarmOverlay from './AlarmOverlay';
+import DueTaskToast from './DueTaskToast';
+import { useDueTaskToasts } from '@/lib/useDueTaskToasts';
 import DigitalClock from './DigitalClock';
 import {
   loadHabitsWithTodayCompletion,
@@ -230,6 +232,11 @@ export default function TaskScheduler({ userId: _userId }: TaskSchedulerProps) {
     setHabits(remaining.map((h, i) => ({ ...h, position: i })));
   };
 
+  const dueToasts = useDueTaskToasts(habits, (habitId) => {
+    const habit = habits.find((h) => h.id === habitId);
+    if (habit && !habit.completed) toggleHabit(habit);
+  });
+
   const sortedHabits = [...habits].sort((a, b) => a.position - b.position);
   const completedCount = sortedHabits.filter((h) => h.completed).length;
   const visibleHabits = activeCategory === 'All'
@@ -245,6 +252,13 @@ export default function TaskScheduler({ userId: _userId }: TaskSchedulerProps) {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
+      <DueTaskToast
+        toasts={dueToasts.toasts}
+        onComplete={dueToasts.complete}
+        onSnooze={dueToasts.snooze}
+        onDismiss={dueToasts.dismiss}
+      />
+
       {/* Header row */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
