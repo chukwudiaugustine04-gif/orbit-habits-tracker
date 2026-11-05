@@ -1,15 +1,19 @@
 /**
  * IndexedDB-backed storage for user-uploaded custom alarm audio.
- * Stores the raw file bytes + metadata so alarms can play offline and
- * persist across reloads without requiring Supabase Storage.
+ * Every record is tagged with the owning account's user id, and every read,
+ * write, and delete is filtered to the signed-in user, so ringtones never
+ * leak between accounts sharing a browser.
  */
+import { supabase } from '@/lib/supabase';
 
 const DB_NAME = 'orbit-alarm-sounds';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE = 'sounds';
+const OWNER_INDEX = 'ownerId';
 
 export interface StoredSound {
   id: string;
+  ownerId: string;
   name: string;
   type: string; // mime type, e.g. audio/mpeg
   size: number;
@@ -34,13 +38,21 @@ function openDb(): Promise<IDBDatabase> {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = () => {
       const db = req.result;
-      if (!db.objectStoreNames.contains(STORE)) {
-        db.createObjectStore(STORE, { keyPath: 'id' });
+      const store = db.objectStoreNames.contains(STORE)
+        ? req.transaction!.objectStore(STORE)
+        : db.createObjectStore(STORE, { keyPath: 'id' });
+      if (!store.indexNames.contains(OWNER_INDEX)) {
+        store.createIndex(OWNER_INDEX, OWNER_INDEX, { unique: false });
       }
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
+}
+
+async function currentOwnerId(): Promise<string | null> {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.user.id ?? null;
 }
 
 function genId(): string {
@@ -50,11 +62,19 @@ function genId(): string {
   return `snd-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function toMeta(s: StoredSound): SoundMeta {
+  return { id: s.id, name: s.name, type: s.type, size: s.size, createdAt: s.createdAt };
+}
+
 export async function saveSound(file: File): Promise<SoundMeta> {
+  const ownerId = await currentOwnerId();
+  if (!ownerId) throw new Error('Sign in to upload custom ringtones');
+
   const db = await openDb();
   const arrayBuffer = await file.arrayBuffer();
   const record: StoredSound = {
     id: genId(),
+    ownerId,
     name: file.name,
     type: file.type || 'audio/*',
     size: file.size,
@@ -68,10 +88,13 @@ export async function saveSound(file: File): Promise<SoundMeta> {
     tx.onerror = () => reject(tx.error);
   });
   db.close();
-  return { id: record.id, name: record.name, type: record.type, size: record.size, createdAt: record.createdAt };
+  return toMeta(record);
 }
 
 export async function getSound(id: string): Promise<StoredSound | null> {
+  const ownerId = await currentOwnerId();
+  if (!ownerId) return null;
+
   const db = await openDb();
   const result = await new Promise<StoredSound | undefined>((resolve, reject) => {
     const tx = db.transaction(STORE, 'readonly');
@@ -80,24 +103,29 @@ export async function getSound(id: string): Promise<StoredSound | null> {
     req.onerror = () => reject(req.error);
   });
   db.close();
-  return result ?? null;
+  if (!result || result.ownerId !== ownerId) return null;
+  return result;
 }
 
 export async function listSounds(): Promise<SoundMeta[]> {
+  const ownerId = await currentOwnerId();
+  if (!ownerId) return [];
+
   const db = await openDb();
-  const all = await new Promise<StoredSound[]>((resolve, reject) => {
+  const owned = await new Promise<StoredSound[]>((resolve, reject) => {
     const tx = db.transaction(STORE, 'readonly');
-    const req = tx.objectStore(STORE).getAll();
+    const req = tx.objectStore(STORE).index(OWNER_INDEX).getAll(IDBKeyRange.only(ownerId));
     req.onsuccess = () => resolve((req.result as StoredSound[]) || []);
     req.onerror = () => reject(req.error);
   });
   db.close();
-  return all
-    .map((s) => ({ id: s.id, name: s.name, type: s.type, size: s.size, createdAt: s.createdAt }))
-    .sort((a, b) => b.createdAt - a.createdAt);
+  return owned.map(toMeta).sort((a, b) => b.createdAt - a.createdAt);
 }
 
 export async function deleteSound(id: string): Promise<void> {
+  const owned = await getSound(id);
+  if (!owned) return;
+
   const db = await openDb();
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(STORE, 'readwrite');
