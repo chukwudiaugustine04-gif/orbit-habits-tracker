@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
+import { isFilePickerOpen } from '@/lib/filePickerGuard';
 
 export type AutoLogoutMinutes = 5 | 10 | 15 | 30 | 0;
 
@@ -45,6 +46,10 @@ export function useAutoLogout(isActive: boolean, onTimeout: () => void) {
 
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
+      if (isFilePickerOpen()) {
+        resetTimer();
+        return;
+      }
       onTimeoutRef.current();
     }, minutes * 60 * 1000);
   }, []);

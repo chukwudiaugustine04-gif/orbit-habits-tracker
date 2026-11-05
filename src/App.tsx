@@ -4,6 +4,7 @@ import OnboardingScreen from '@/components/OnboardingScreen';
 import AuthScreen from '@/components/AuthScreen';
 import Dashboard from '@/components/Dashboard';
 import SessionLockScreen from '@/components/SessionLockScreen';
+import { installFilePickerGuard, isFilePickerOpen } from '@/lib/filePickerGuard';
 import PrivacyPolicy from '@/components/PrivacyPolicy';
 import { supabase } from '@/lib/supabase';
 import { applyTheme, type ThemeId } from '@/lib/themes';
@@ -63,7 +64,7 @@ export default function App() {
     if (typeof document === 'undefined') return;
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') {
-        if (session) sessionStorage.setItem(LOCK_KEY, '1');
+        if (session && !isFilePickerOpen()) sessionStorage.setItem(LOCK_KEY, '1');
       } else if (document.visibilityState === 'visible') {
         if (sessionStorage.getItem(LOCK_KEY) === '1' && session) {
           sessionStorage.removeItem(LOCK_KEY);
@@ -74,6 +75,8 @@ export default function App() {
     document.addEventListener('visibilitychange', onVisibility);
     return () => document.removeEventListener('visibilitychange', onVisibility);
   }, [session]);
+
+  useEffect(() => installFilePickerGuard(), []);
 
   const handleUnlocked = () => {
     setIsLocked(false);
